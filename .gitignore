@@ -1,0 +1,13 @@
+# VS Code
+.vscode/
+
+# Environment / secrets
+.env
+**/.env
+**/secret.h
+# Build
+build/
+dist/
+
+# Dependencies
+node_modules/
