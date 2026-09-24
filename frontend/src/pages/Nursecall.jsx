@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { TbAlertCircle } from "react-icons/tb";
 import { TfiMore, TfiRssAlt } from "react-icons/tfi";
 import Card from "../components/Card";
@@ -13,8 +13,28 @@ import {
   registerNewEvents,
 } from "../api/api";
 import { data } from "react-router-dom";
+import { useRef } from "react";
+
+import alarmSound from "../assets/Hidup-jokowi.mp3";
 
 export default function NurseCallPage() {
+  const alarmRef = useRef(new Audio(alarmSound));
+  const playAlarm = () => {
+    const alarm = alarmRef.current;
+
+    alarm.loop = true;
+    alarm.currentTime = 0;
+
+    alarm.play();
+  };
+
+  const stopAlarm = () => {
+    const alarm = alarmRef.current;
+
+    alarm.pause();
+    alarm.currentTime = 0;
+  };
+  const [sound, setSound] = useState(false);
   const [alerts, setAlerts] = useState(0);
   const [devices, setDevices] = useState([]);
   const [online, setOnline] = useState(navigator.onLine);
@@ -89,6 +109,21 @@ export default function NurseCallPage() {
     );
   }, [events]);
 
+  useEffect(() => {
+    if (sound) {
+      playAlarm();
+    } else {
+      stopAlarm();
+    }
+  }, [sound]);
+
+  useEffect(() => {
+    if (alerts > 0) {
+      setSound(true);
+    } else {
+      setSound(false);
+    }
+  }, [alerts]);
   return (
     <>
       {/* Navbar */}
