@@ -53,5 +53,5 @@ export async function registerNewEvents(data) {
 }
 
 export async function getLatestEvents() {
-  return callApi({ url: "/alerts", method: "GET" });
+  return callApi({ url: "/nurse-events", method: "GET" });
 }
