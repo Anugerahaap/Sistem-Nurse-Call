@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/julienschmidt/httprouter"
@@ -24,8 +25,8 @@ func NewHandler(service Service, validator *validator.Validate, middleware *midd
 
 func (h *Handler) RegisterRoute(router *httprouter.Router) {
 	router.POST("/api/devices", h.handleRegisterNewDevice)
-	router.GET("/api/devices", h.Middleware.TimeoutMiddleware(2, h.handleGetDevices))
-	router.GET("/api/devices/:device-id", h.Middleware.TimeoutMiddleware(2, h.handleGetDeviceByID))
+	router.GET("/api/devices", h.Middleware.TimeoutMiddleware(2*time.Second, h.handleGetDevices))
+	router.GET("/api/devices/:device-id", h.Middleware.TimeoutMiddleware(2*time.Second, h.handleGetDeviceByID))
 	router.PATCH("/api/devices/:device-id", h.handleUpdate)
 }
 

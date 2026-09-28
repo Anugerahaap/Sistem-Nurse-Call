@@ -37,7 +37,7 @@ func (s *ApiServer) Run() error {
 
 	nurseEventRepository := nurseevent.NewRepostiroy()
 	nurseEventService := nurseevent.NewService(nurseEventRepository, s.Db, *deviceService)
-	nurseEventHandler := nurseevent.NewHandler(*nurseEventService, validator)
+	nurseEventHandler := nurseevent.NewHandler(*nurseEventService, validator, middleware)
 	nurseEventHandler.RegisterRoute(router)
 
 	c := cors.New(cors.Options{
