@@ -135,6 +135,6 @@ func (h *Handler) handleRegisterNewEvent(w http.ResponseWriter, r *http.Request,
 			return
 		}
 	}
-	utils.WriteJson(w, 200, "status ok", "", payload.Event)
+	utils.WriteJson(w, 200, "status ok", payload.Event, nil)
 
 }

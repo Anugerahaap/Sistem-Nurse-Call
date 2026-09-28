@@ -72,7 +72,7 @@ func NewRepostiroy() Repository {
 // }
 
 func (r *RepositoryImplementaion) GetNurseEvents(ctx context.Context, query string, dbtx DBTX, args ...any) ([]domain.NurseEvent, error) {
-	//  "select device_id, event,tanggal,waktu from nurse_events"
+	//
 	rows, err := dbtx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
