@@ -1,7 +1,8 @@
+#include <secret.h>
 #include <wifi.h>
 
 void Wifi::connectWifi() {
-  WiFi.begin(SSID, PASS);
+  WiFi.begin(MY_SSID, MY_PASS);
   int counter = 0;
 
   Serial.println("Connecting to Wifi");

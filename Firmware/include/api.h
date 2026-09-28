@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <HTTPClient.h>
+#include <response.h>
 
 class Api {
 private:
@@ -11,4 +12,5 @@ public:
 
   String sendEvent(const char *deviceID, const char *event, const char *url);
   String getEvent(const char *deviceID, const char *url);
+  void parseResponse(ApiResponse &response, String r);
 };

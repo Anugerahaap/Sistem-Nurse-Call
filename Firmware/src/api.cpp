@@ -51,3 +51,19 @@ String Api::getEvent(const char *deviceID, const char *url) {
 
   return response;
 }
+
+void Api::parseResponse(ApiResponse &response, String r) {
+
+  JsonDocument doc;
+
+  deserializeJson(doc, r);
+
+  response.code = doc["code"];
+  response.status = doc["status"].as<String>();
+  response.message = doc["message"].as<String>();
+
+  if (response.code == 200) {
+    /* code */
+    response.data = doc["data"];
+  }
+}
