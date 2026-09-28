@@ -1,10 +1,12 @@
 package api
 
 import (
+	"backend/middleware"
 	nurseevent "backend/service/NurseEvent"
 	"backend/service/device"
 	"backend/utils"
 	"database/sql"
+	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -23,13 +25,14 @@ func NewServer(addr string, db *sql.DB) *ApiServer {
 
 func (s *ApiServer) Run() error {
 	router := httprouter.New()
+	middleware := middleware.NewMiddleware()
 
 	router.NotFound = utils.NotFoundHandler()
 	var validator *validator.Validate = validator.New()
 
 	deviceRepository := device.NewRepository()
 	deviceService := device.NewService(deviceRepository, s.Db)
-	deviceHandler := device.NewHandler(*deviceService, validator)
+	deviceHandler := device.NewHandler(*deviceService, validator, middleware)
 	deviceHandler.RegisterRoute(router)
 
 	nurseEventRepository := nurseevent.NewRepostiroy()
@@ -44,7 +47,7 @@ func (s *ApiServer) Run() error {
 	})
 
 	handler := c.Handler(router)
-
+	fmt.Println("Running server on:", s.Addr)
 	return http.ListenAndServe(s.Addr, handler)
 
 }

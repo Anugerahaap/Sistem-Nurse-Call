@@ -1,12 +1,12 @@
 package device
 
 import (
-	"backend/model/domain"
 	"backend/model/web"
 	"backend/utils"
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 type Service struct {
@@ -18,34 +18,25 @@ func NewService(repo Repository, db *sql.DB) *Service {
 	return &Service{Repo: repo, Db: db}
 }
 
-func (s *Service) GetDevices(ctx context.Context) ([]web.Device, error) {
-	tx, err := s.Db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer utils.CommitOrRollback(tx)
-
-	dvc, err := s.Repo.GetAllDevice(ctx, tx)
+func (s *Service) GetAllDevice(ctx context.Context) ([]web.Device, error) {
+	query := "select device_id,room_name,tanggal,waktu from devices;"
+	dvc, err := s.Repo.GetDevices(ctx, query, s.Db)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(*dvc) < 1 {
+	if len(dvc) == 0 {
 		return nil, utils.NotFoundDevices
 	}
 
-	return utils.ConvertDomainDevicesIntoSlices(*dvc), nil
-
+	return utils.ConvertDomainDevicesIntoSlices(dvc), nil
 }
 
-func (s *Service) GetDeviceByID(ctx context.Context, DeviceID string) (*web.Device, error) {
-	tx, err := s.Db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer utils.CommitOrRollback(tx)
+func (s *Service) GetDeviceByID(ctx context.Context, deviceID string) (*web.Device, error) {
 
-	Device, err := s.Repo.GetByDeviceId(ctx, DeviceID, tx)
+	query := "select  device_id,room_name,tanggal,waktu from devices where device_id = $1 "
+
+	device, err := s.Repo.GetDevice(ctx, query, s.Db, deviceID)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -53,93 +44,88 @@ func (s *Service) GetDeviceByID(ctx context.Context, DeviceID string) (*web.Devi
 		default:
 			return nil, err
 		}
-
 	}
 
-	return utils.ConvertDomainDeviceIntoWeb(Device), nil
-
+	return utils.ConvertDomainDeviceIntoWeb(device), nil
 }
 
-func (s *Service) RegisterNewDevice(ctx context.Context, device *web.DevicePayload) error {
+func (s *Service) RegisterNewDevice(ctx context.Context, payload *web.DevicePayload) (string, error) {
+
 	tx, err := s.Db.Begin()
 	if err != nil {
-		fmt.Println("error:", err.Error())
-
-		return err
+		return "", err
 	}
+
 	defer utils.CommitOrRollback(tx)
 
-	//make sure device tidak(belum terdaftar) terdaftar
-	_, err = s.GetDeviceByID(ctx, device.DeviceId)
-	if err == nil {
+	//make sure device-id belum terdaftar
 
-		return utils.DevicesIdAlrRegistered
+	_, err = s.GetDeviceByID(ctx, payload.DeviceId)
+	if err != nil {
+		return "", err
 	}
 
-	return s.Repo.Create(ctx, &domain.Device{DeviceId: device.DeviceId, RoomName: device.RoomName}, tx)
+	query := "insert into devices (device_id,room_name) values($1,$2)"
 
+	result, err := s.Repo.Execute(ctx, query, tx, payload.DeviceId, payload.RoomName)
+	if err != nil {
+		return "", err
+	}
+
+	if affected, err := result.RowsAffected(); err != nil || affected == 0 {
+		log.Println(err)
+		return "", fmt.Errorf("no rows affected ,message :%v", err)
+	}
+
+	return "", nil
 }
 
-func (s *Service) UpdateRoomName(ctx context.Context, device *web.DevicePayload) error {
+// seharusnya ada mac addres sebagai unique id ,karna aku cuman ada 1 unit esp32 jadi aku pakai device-id langsung (ini bukan panduan menggunakan func ini hehe)
+// func UpdateDevice(ctx context.Context, mac, oldID string, payload *web.DevicePayload) error {}
+func (s *Service) UpdateDeviceID(ctx context.Context, OldID string, payload *web.DevicePayload) (string, error) {
 	tx, err := s.Db.Begin()
 	if err != nil {
-		return err
+		return "", err
 	}
+
 	defer utils.CommitOrRollback(tx)
 
-	// make sure device-id terdaftar
-	_, err = s.GetDeviceByID(ctx, device.DeviceId)
+	// cek untuk memastikan oldID(id yg akan diubah) sudah terdaftar
+	oldDevice, err := s.GetDeviceByID(ctx, OldID)
 	if err != nil {
-		return err
+		return "", err
+	}
+	// cek jika old id tdk ada perubahan dengan id baru maka return error
+	if oldDevice.DeviceId == payload.DeviceId {
+		return "", utils.DeviceSameParameter
 	}
 
-	query := "update devices set room_name = $1 , tanggal = current_date , waktu = current_time where device_id = $2"
-
-	return s.Repo.Update(ctx, query, tx, device.RoomName, device.DeviceId)
-
-}
-
-func (s *Service) UpdateDeviceID(ctx context.Context, oldDeviceID string, device *web.DevicePayload) error {
-	tx, err := s.Db.Begin()
-	if err != nil {
-		return err
-	}
-	defer utils.CommitOrRollback(tx)
-
-	// make sure device-id terdaftar
-	oldDevice, err := s.GetDeviceByID(ctx, oldDeviceID)
-	if err != nil {
-		return err
-	}
-
-	if oldDevice.DeviceId == device.DeviceId {
-		return utils.DeviceSameParameter
-	}
-
-	// check if device-id already exist
-
-	if _, err := s.GetDeviceByID(ctx, device.DeviceId); err == nil {
-		fmt.Println(err)
-		return utils.DevicesIdAlrRegistered
+	// pastikan id yg mau diubah blm terdaftar
+	if _, err := s.GetDeviceByID(ctx, payload.DeviceId); err == nil {
+		return "", utils.DevicesIdAlrRegistered
 	}
 
 	query := "update devices set device_id = $1 ,tanggal = current_date,waktu = current_time where device_id = $2"
 
-	return s.Repo.Update(ctx, query, tx, device.DeviceId, oldDeviceID)
-
+	result, err := s.Repo.Execute(ctx, query, tx, payload.DeviceId, OldID)
+	if affected, err := result.RowsAffected(); err != nil || affected == 0 {
+		log.Println(err)
+		return "", fmt.Errorf("no rows affected ,message :%v", err)
+	}
+	return "", nil
 }
 
-func (s *Service) DeleteDevice(ctx context.Context, device *web.DevicePayload) (*web.Device, error) {
-	tx, err := s.Db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer utils.CommitOrRollback(tx)
-	//make sure device sudah terdaftar
-	dvc, err := s.GetDeviceByID(ctx, device.DeviceId)
-	if err != nil {
-		return nil, err
+func (s *Service) UpdateRoomName(ctx context.Context, payload *web.DevicePayload) (string, error) {
+
+	if _, err := s.GetDeviceByID(ctx, payload.DeviceId); err != nil {
+		return "", err
 	}
 
-	return dvc, s.Repo.Delete(ctx, device.DeviceId, tx)
+	query := "update devices set room_name = $1 , tanggal = current_date , waktu = current_time where device_id = $2"
+	_, err := s.Repo.Execute(ctx, query, s.Db, payload.RoomName, payload.DeviceId)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.RoomName, nil
 }
