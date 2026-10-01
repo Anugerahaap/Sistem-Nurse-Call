@@ -5,6 +5,7 @@ import (
 	"backend/model/web"
 	"backend/utils"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -109,15 +110,17 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request, params ht
 	newDeviceID := strings.TrimSpace(queryParam.Get("new-id"))
 	newRoomName := strings.TrimSpace(queryParam.Get("room-name"))
 
-	payload := &web.DevicePayload{DeviceId: newDeviceID, RoomName: newRoomName}
-
-	if err := utils.ValidateStruct(h.validator, payload); len(err) > 0 {
+	if err := utils.ValidateStruct(h.validator, &web.DevicePayload{
+		DeviceId: deviceID,
+		RoomName: newRoomName,
+	}); len(err) > 0 {
+		log.Println(err)
 		utils.JsonBadRequest(w, "Required parameter is missing", err)
 		return
 	}
 
 	if newDeviceID != "" {
-		newID, err := h.service.UpdateDeviceID(r.Context(), deviceID, payload)
+		newID, err := h.service.UpdateDeviceID(r.Context(), deviceID, &web.DevicePayload{DeviceId: newDeviceID})
 		// log.Println("payload route:", payload)
 		if err != nil {
 			switch err {
@@ -125,7 +128,7 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request, params ht
 				utils.JsonConflict(w, err.Error(), nil)
 				return
 			case utils.DevicesIdAlrRegistered:
-				utils.JsonConflict(w, fmt.Sprintf("device-id:%s sudah terdaftar,tidak dapat memiliki nama device yang sama", payload.DeviceId), nil)
+				utils.JsonConflict(w, fmt.Sprintf("device-id:%s sudah terdaftar,tidak dapat memiliki nama device yang sama", newDeviceID), nil)
 				return
 			case utils.NotFoundDevices:
 				utils.JsonNotFound(w, "No devices found ,make sure device-id is correct", nil)
@@ -139,15 +142,14 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request, params ht
 		utils.WriteJson(w, 200, "status ok", "", newID)
 
 	} else if newRoomName != "" {
-		payload.DeviceId = deviceID
-		newRoom, err := h.service.UpdateRoomName(r.Context(), payload)
+		newRoom, err := h.service.UpdateRoomName(r.Context(), &web.DevicePayload{DeviceId: deviceID, RoomName: newRoomName})
 		if err != nil {
 			switch err {
 			case utils.DeviceSameParameter:
 				utils.JsonConflict(w, err.Error(), nil)
 				return
 			case utils.DevicesIdAlrRegistered:
-				utils.JsonConflict(w, fmt.Sprintf("device-id:%s sudah terdaftar,tidak dapat memiliki nama device yang sama", payload.DeviceId), nil)
+				utils.JsonConflict(w, fmt.Sprintf("device-id:%s sudah terdaftar,tidak dapat memiliki nama device yang sama", newDeviceID), nil)
 				return
 			case utils.NotFoundDevices:
 				utils.JsonNotFound(w, "No devices found ,make sure device-id is correct", nil)
