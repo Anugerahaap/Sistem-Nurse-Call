@@ -19,7 +19,7 @@ func NewService(repo Repository, db *sql.DB) *Service {
 }
 
 func (s *Service) GetAllDevice(ctx context.Context) ([]web.Device, error) {
-	query := "select device_id,room_name,tanggal,waktu from devices;"
+	query := "select device_id,room_name,tanggal,waktu from devices order by device_id asc;"
 	dvc, err := s.Repo.GetDevices(ctx, query, s.Db)
 	if err != nil {
 		return nil, err
